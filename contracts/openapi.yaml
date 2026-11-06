@@ -1,0 +1,118 @@
+openapi: 3.1.0
+info:
+  title: AI Multi-OS Lab API
+  version: 0.1.0
+  description: Initial control-plane contract. Operations remain asynchronous and must be confirmed by a worker.
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        '200':
+          description: Controller health
+  /hosts:
+    get:
+      operationId: listHosts
+      responses:
+        '200':
+          description: Registered workers
+  /images:
+    get:
+      operationId: listImages
+      responses:
+        '200':
+          description: Registered OS images
+  /vms:
+    get:
+      operationId: listVms
+      responses:
+        '200':
+          description: VM inventory
+    post:
+      operationId: createVm
+      description: Queue a VM provisioning job. HTTP acceptance is not proof of VM creation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VmBlueprint'
+      responses:
+        '202':
+          description: Provisioning job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Invalid blueprint
+        '409':
+          description: No compatible worker or resource capacity
+  /vms/{vmId}/start:
+    post:
+      operationId: startVm
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      responses:
+        '202':
+          description: Start job accepted
+  /vms/{vmId}/stop:
+    post:
+      operationId: stopVm
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      responses:
+        '202':
+          description: Stop job accepted
+  /jobs/{jobId}:
+    get:
+      operationId: getJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Current job state
+components:
+  parameters:
+    VmId:
+      name: vmId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    VmBlueprint:
+      type: object
+      additionalProperties: false
+      required: [name, os, architecture, hardware, network_profile]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 63, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$' }
+        os:
+          type: object
+          required: [family, version]
+          properties:
+            family: { type: string, enum: [windows, linux, freebsd] }
+            distribution: { type: string }
+            version: { type: string }
+        architecture: { type: string, enum: [x86_64, aarch64, armv7] }
+        hardware:
+          type: object
+          required: [vcpus, memory_mb, disk_gb]
+          properties:
+            vcpus: { type: integer, minimum: 1, maximum: 64 }
+            memory_mb: { type: integer, minimum: 1024, maximum: 262144 }
+            disk_gb: { type: integer, minimum: 16, maximum: 4096 }
+        network_profile: { type: string, enum: [AIRGAP, ISOLATED, SIMULATED, CONTROLLED_EGRESS] }
+    Job:
+      type: object
+      required: [job_id, operation, status]
+      properties:
+        job_id: { type: string }
+        vm_id: { type: string }
+        operation: { type: string }
+        status: { type: string, enum: [QUEUED, RUNNING, SUCCEEDED, FAILED] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
