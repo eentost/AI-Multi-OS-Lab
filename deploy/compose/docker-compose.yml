@@ -1,0 +1,38 @@
+services:
+  api:
+    build:
+      context: ../../backend
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: multios
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+  nats:
+    image: nats:2
+    command: ["-js"]
+    volumes:
+      - nats_data:/data
+    restart: unless-stopped
+  minio:
+    image: minio/minio
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+  guacd:
+    image: guacamole/guacd:1.6.0
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  nats_data:
+  minio_data:
