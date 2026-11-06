@@ -22,7 +22,7 @@ async fn health() -> Json<Health> {
 #[tokio::main]
 async fn main() {
     let app = Router::new().route("/api/v1/health", get(health));
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
     let listener = tokio::net::TcpListener::bind(addr).await.expect("bind API listener");
     axum::serve(listener, app).await.expect("serve API");
 }
